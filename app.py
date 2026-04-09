@@ -3,40 +3,37 @@ import pandas as pd
 import numpy as np
 import sqlite3
 import plotly.express as px
-from sklearn.ensemble import RandomForestClassifier
-from datetime import datetime
+from datetime import datetime, timedelta
 
 st.set_page_config(page_title="Khatakhat AI", layout="wide")
 
-# -----------------------------
-# STYLE
-# -----------------------------
+# ---------------------------
+# Minimal Clean UI
+# ---------------------------
 
 st.markdown("""
 <style>
 
 .stApp{
-background-color:#f5f7fb;
+background-color:#f8fafc;
 }
 
-.hero-title{
-font-size:60px;
+h1{
+font-size:52px;
 font-weight:700;
-text-align:center;
 color:#0f172a;
 }
 
-.hero-sub{
-font-size:24px;
-text-align:center;
-color:#334155;
+h2{
+color:#0f172a;
 }
 
-.hero-desc{
-font-size:18px;
-text-align:center;
-max-width:800px;
-margin:auto;
+h3{
+color:#1e293b;
+}
+
+.tagline{
+font-size:22px;
 color:#475569;
 }
 
@@ -44,15 +41,24 @@ color:#475569;
 background:white;
 padding:25px;
 border-radius:12px;
-box-shadow:0 4px 10px rgba(0,0,0,0.05);
+box-shadow:0 4px 12px rgba(0,0,0,0.05);
+}
+
+.main-btn button{
+background:#2563eb;
+color:white;
+border:none;
+padding:10px 25px;
+border-radius:8px;
+font-weight:600;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
-# -----------------------------
+# ---------------------------
 # DATABASE
-# -----------------------------
+# ---------------------------
 
 conn = sqlite3.connect("khatakhat.db", check_same_thread=False)
 
@@ -60,265 +66,207 @@ conn.execute("""
 CREATE TABLE IF NOT EXISTS ledger(
 customer TEXT,
 amount REAL,
-days_due INTEGER,
 status TEXT,
+due_date TEXT,
 trust_score INTEGER
 )
 """)
 
-# -----------------------------
+
+# ---------------------------
+# SAMPLE DATA
+# ---------------------------
+
+def generate_sample():
+
+    customers = [
+        "Alpha Retail",
+        "Metro Electronics",
+        "Zenith Traders",
+        "City Hardware",
+        "Nova Distributors"
+    ]
+
+    rows=[]
+
+    for i in range(120):
+
+        status=np.random.choice(["Paid","Pending"],p=[0.7,0.3])
+
+        rows.append({
+
+        "customer":np.random.choice(customers),
+
+        "amount":np.random.randint(2000,50000),
+
+        "status":status,
+
+        "due_date":(datetime.now()+timedelta(days=np.random.randint(-10,20))).strftime("%Y-%m-%d"),
+
+        "trust_score":np.random.randint(400,850)
+
+        })
+
+    df=pd.DataFrame(rows)
+
+    df.to_sql("ledger",conn,if_exists="replace",index=False)
+
+    return df
+
+
+def get_data():
+
+    try:
+        df=pd.read_sql("SELECT * FROM ledger",conn)
+        return df
+    except:
+        return pd.DataFrame()
+
+
+# ---------------------------
 # LANDING PAGE
-# -----------------------------
+# ---------------------------
 
 def landing():
 
-    st.markdown('<div class="hero-title">Khatakhat AI</div>', unsafe_allow_html=True)
-    st.markdown('<div class="hero-sub">Turn Outstanding Credit Into Predictable Cashflow</div>', unsafe_allow_html=True)
+    st.markdown("# Khatakhat AI")
+
+    st.markdown(
+        "<div class='tagline'>Turn Outstanding Credit Into Predictable Cashflow</div>",
+        unsafe_allow_html=True
+    )
 
     st.write("")
 
-    st.markdown("""
-    <div class="hero-desc">
-    Khatakhat AI is a receivables intelligence platform designed for small and medium businesses.
-    It analyzes customer payment behavior, predicts default risks, and recommends recovery strategies
-    to improve business cashflow.
-    </div>
-    """, unsafe_allow_html=True)
+    st.write("""
+Khatakhat AI is an intelligent receivables analytics platform designed to help businesses
+track outstanding credit, predict payment risks, and accelerate collections using data-driven insights.
+
+Instead of relying on manual follow-ups and spreadsheets, Khatakhat AI analyzes customer payment
+behavior to recommend optimal recovery strategies and improve working capital efficiency.
+""")
+
+    st.write("")
+
+    col1,col2,col3=st.columns(3)
+
+    with col1:
+        st.markdown("""
+        <div class="feature-card">
+        <h3>Credit Risk Intelligence</h3>
+        Identify customers likely to delay payments using predictive analytics.
+        </div>
+        """,unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("""
+        <div class="feature-card">
+        <h3>Cashflow Forecasting</h3>
+        Predict incoming payments and maintain better financial planning.
+        </div>
+        """,unsafe_allow_html=True)
+
+    with col3:
+        st.markdown("""
+        <div class="feature-card">
+        <h3>Smart Recovery Strategies</h3>
+        AI suggests the best approach to recover pending payments.
+        </div>
+        """,unsafe_allow_html=True)
 
     st.write("")
     st.write("")
 
     if st.button("Enter Platform"):
-        st.session_state.page = "dashboard"
+        st.session_state.page="login"
         st.rerun()
 
-    st.write("")
-    st.write("")
 
-    st.subheader("Platform Capabilities")
+# ---------------------------
+# LOGIN
+# ---------------------------
 
-    col1, col2, col3 = st.columns(3)
+def login():
 
-    with col1:
-        st.markdown("""
-        <div class="feature-card">
-        <h4>AI Payment Risk Prediction</h4>
-        Identify customers likely to delay payments using predictive analytics.
-        </div>
-        """, unsafe_allow_html=True)
+    st.title("Platform Access")
 
-    with col2:
-        st.markdown("""
-        <div class="feature-card">
-        <h4>Cashflow Forecasting</h4>
-        Estimate expected incoming payments and manage working capital.
-        </div>
-        """, unsafe_allow_html=True)
+    username=st.text_input("Username")
+    password=st.text_input("Password",type="password")
 
-    with col3:
-        st.markdown("""
-        <div class="feature-card">
-        <h4>Recovery Intelligence</h4>
-        Get smart recommendations for recovering pending payments.
-        </div>
-        """, unsafe_allow_html=True)
+    if st.button("Login"):
 
-# -----------------------------
-# DATA FUNCTIONS
-# -----------------------------
+        if username=="admin" and password=="admin":
 
-def insert_data(customer, amount, days_due, status, trust):
-
-    conn.execute(
-        "INSERT INTO ledger VALUES (?,?,?,?,?)",
-        (customer, amount, days_due, status, trust)
-    )
-
-    conn.commit()
-
-
-def load_data():
-
-    df = pd.read_sql("SELECT * FROM ledger", conn)
-
-    return df
-
-
-# -----------------------------
-# AI MODEL
-# -----------------------------
-
-def train_model(df):
-
-    df["late"] = df["status"].apply(lambda x: 1 if x == "Pending" else 0)
-
-    X = df[["amount", "days_due", "trust_score"]]
-    y = df["late"]
-
-    model = RandomForestClassifier()
-
-    model.fit(X, y)
-
-    return model
-
-
-# -----------------------------
-# RECOVERY MESSAGE
-# -----------------------------
-
-def recovery_message(row):
-
-    if row["risk"] > 0.7:
-        return f"Customer {row['customer']} is high risk. Send urgent payment reminder."
-
-    if row["risk"] > 0.4:
-        return f"Friendly reminder recommended for {row['customer']}."
-
-    return f"{row['customer']} is reliable. Standard reminder sufficient."
-
-
-# -----------------------------
-# DASHBOARD
-# -----------------------------
-
-def dashboard():
-
-    st.title("Receivables Intelligence Dashboard")
-
-    df = load_data()
-
-    if df.empty:
-
-        st.info("No ledger data available")
-
-    else:
-
-        model = train_model(df)
-
-        X = df[["amount", "days_due", "trust_score"]]
-
-        df["risk"] = model.predict_proba(X)[:,1]
-
-        col1, col2, col3 = st.columns(3)
-
-        col1.metric("Total Outstanding", f"₹{df[df.status=='Pending']['amount'].sum():,.0f}")
-
-        col2.metric("Recovered Payments", f"₹{df[df.status=='Paid']['amount'].sum():,.0f}")
-
-        col3.metric("Avg Trust Score", int(df.trust_score.mean()))
-
-        st.write("")
-
-        st.subheader("Customer Risk Analysis")
-
-        fig = px.scatter(
-            df,
-            x="amount",
-            y="trust_score",
-            color="risk",
-            hover_name="customer"
-        )
-
-        st.plotly_chart(fig, use_container_width=True)
-
-        st.write("")
-
-        st.subheader("Recovery Recommendations")
-
-        df["recommendation"] = df.apply(recovery_message, axis=1)
-
-        st.dataframe(df)
-
-        # CASHFLOW FORECAST
-
-        st.subheader("Cashflow Forecast")
-
-        expected = df[df.status=="Pending"]["amount"].sum() * 0.6
-
-        st.write(f"Expected Recovery Next 30 Days: ₹{expected:,.0f}")
-
-
-# -----------------------------
-# DATA INPUT
-# -----------------------------
-
-def data_input():
-
-    st.subheader("Add Ledger Record")
-
-    customer = st.text_input("Customer Name")
-
-    amount = st.number_input("Amount")
-
-    days_due = st.number_input("Days Due")
-
-    trust = st.slider("Trust Score", 300, 900, 650)
-
-    status = st.selectbox("Payment Status", ["Paid", "Pending"])
-
-    if st.button("Add Record"):
-
-        insert_data(customer, amount, days_due, status, trust)
-
-        st.success("Record Added")
-
-
-# -----------------------------
-# DATA UPLOAD
-# -----------------------------
-
-def upload():
-
-    st.subheader("Upload Ledger Data")
-
-    file = st.file_uploader("Upload CSV or Excel")
-
-    if file:
-
-        if file.name.endswith("csv"):
-
-            df = pd.read_csv(file)
+            st.session_state.auth=True
+            st.session_state.page="dashboard"
+            st.rerun()
 
         else:
-
-            df = pd.read_excel(file)
-
-        df.to_sql("ledger", conn, if_exists="replace", index=False)
-
-        st.success("Data uploaded successfully")
+            st.error("Invalid credentials")
 
 
-# -----------------------------
+# ---------------------------
+# DASHBOARD
+# ---------------------------
+
+def dashboard(df):
+
+    st.title("Receivables Dashboard")
+
+    pending=df[df["status"]=="Pending"]
+    paid=df[df["status"]=="Paid"]
+
+    col1,col2,col3=st.columns(3)
+
+    col1.metric("Outstanding Amount",f"₹{pending['amount'].sum():,.0f}")
+
+    col2.metric("Recovered Amount",f"₹{paid['amount'].sum():,.0f}")
+
+    col3.metric("Average Trust Score",int(df["trust_score"].mean()))
+
+    st.write("")
+
+    fig=px.scatter(
+        df,
+        x="amount",
+        y="trust_score",
+        color="status",
+        title="Customer Credit Distribution"
+    )
+
+    st.plotly_chart(fig,use_container_width=True)
+
+    st.subheader("Ledger")
+
+    st.dataframe(df,use_container_width=True)
+
+
+# ---------------------------
 # MAIN APP
-# -----------------------------
+# ---------------------------
 
 def main():
 
     if "page" not in st.session_state:
-        st.session_state.page = "landing"
+        st.session_state.page="landing"
 
-    if st.session_state.page == "landing":
+    if "auth" not in st.session_state:
+        st.session_state.auth=False
 
+    if st.session_state.page=="landing":
         landing()
 
-    else:
+    elif st.session_state.page=="login":
+        login()
 
-        menu = st.sidebar.radio(
-            "Navigation",
-            [
-                "Dashboard",
-                "Upload Ledger",
-                "Manual Entry"
-            ]
-        )
+    elif st.session_state.page=="dashboard":
 
-        if menu == "Dashboard":
-            dashboard()
+        df=get_data()
 
-        if menu == "Upload Ledger":
-            upload()
+        if df.empty:
+            df=generate_sample()
 
-        if menu == "Manual Entry":
-            data_input()
+        dashboard(df)
+
 
 main()
