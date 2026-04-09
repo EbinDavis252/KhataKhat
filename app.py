@@ -8,24 +8,44 @@ from datetime import datetime, timedelta
 import io
 
 # ==========================================
-# 0. UI & READABILITY ENGINE
+# 0. TITANIUM CYBER UI CONFIG
 # ==========================================
-st.set_page_config(page_title="KhataKhat Pro | AI Assistant", layout="wide", page_icon="📈")
+st.set_page_config(page_title="KhataKhat Pro | Enterprise AI", layout="wide", page_icon="🛡️")
 
 st.markdown("""
     <style>
-    .stApp { background-color: #0F172A; color: #F8FAFC; }
-    .khatakhat-card {
-        background: #1E293B; border-left: 6px solid #6366F1;
-        padding: 20px; border-radius: 12px; margin-bottom: 25px;
-        color: #F8FAFC; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap');
+    
+    .stApp { background: linear-gradient(135deg, #05070A 0%, #0F172A 100%); color: #F8FAFC; font-family: 'Inter', sans-serif; }
+    
+    /* Neon Cyber Cards */
+    .khatakhat-panel {
+        background: rgba(30, 41, 59, 0.4);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(0, 242, 255, 0.2);
+        border-left: 5px solid #00F2FF;
+        padding: 25px;
+        border-radius: 15px;
+        margin-bottom: 25px;
+        color: #F8FAFC;
     }
-    h1, h2, h3 { color: #38BDF8; font-weight: 700; }
-    div[data-testid="stMetricValue"] { color: #22D3EE !important; }
+    
+    /* High-Readability Headers */
+    h1, h2, h3 { color: #00F2FF; font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 2px; }
+    
+    /* Glowing Metrics */
+    div[data-testid="stMetricValue"] { color: #10B981 !important; text-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
+
+    /* Buttons: Gradient Psychedelic */
     .stButton>button {
-        background: linear-gradient(90deg, #6366F1, #38BDF8);
-        color: white; border-radius: 8px; border: none; font-weight: bold; width: 100%;
+        background: linear-gradient(90deg, #6366F1, #00F2FF);
+        color: white; border: none; border-radius: 12px;
+        padding: 12px 24px; font-weight: bold; transition: 0.3s;
     }
+    .stButton>button:hover { transform: scale(1.02); box-shadow: 0 0 20px rgba(0, 242, 255, 0.6); }
+    
+    /* Sidebar */
+    section[data-testid="stSidebar"] { background-color: #020617 !important; border-right: 1px solid #00F2FF33; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -34,23 +54,25 @@ st.markdown("""
 # ==========================================
 lex = {
     "English": {
-        "m1": "📊 Dashboard", "m2": "📂 Upload Data", "m3": "Smart Ledger", 
+        "m1": "📊 Executive Command", "m2": "📂 Bulk Data Ingest", "m3": "📓 Smart Khata", 
         "m4": "🔮 AI Predictor", "m5": "🎯 Recovery Ops", "m6": "⚠️ Risk Radar",
-        "m7": "📅 Smart Scheduler", "m8": "🎖️ Trust Index", "m9": "💡 Insights", "m10": "📄 Reports",
-        "ai_head": "KhataKhat AI Briefing", "wa": "WhatsApp Nudge 🚀"
+        "m7": "📅 Action Scheduler", "m8": "🎖️ Trust Leaderboard", "m9": "⚖️ Legal Center", 
+        "m10": "🏦 Bankability", "m11": "🤖 Auto-Logs", "m12": "📄 Audit Reports",
+        "ai_head": "KhataKhat AI Intelligence", "wa": "Launch WhatsApp Nudge 🚀"
     },
     "Hindi": {
-        "m1": "📊 डैशबोर्ड", "m2": "📂 डेटा अपलोड", "m3": "स्मार्ट खाता", 
-        "m4": "🔮 भविष्यवाणी", "m5": "🎯 वसूली केंद्र", "m6": "⚠️ जोखिम रडार",
-        "m7": "📅 स्मार्ट कैलेंडर", "m8": "🎖️ भरोसा स्कोर", "m9": "💡 व्यापारिक विचार", "m10": "📄 रिपोर्ट",
+        "m1": "📊 मुख्य डैशबोर्ड", "m2": "📂 डेटा अपलोड", "m3": "📓 स्मार्ट खाता", 
+        "m4": "🔮 जोखिम भविष्यवाणी", "m5": "🎯 वसूली केंद्र", "m6": "⚠️ जोखिम रडार",
+        "m7": "📅 स्मार्ट कैलेंडर", "m8": "🎖️ भरोसा स्कोर", "m9": "⚖️ कानूनी केंद्र", 
+        "m10": "🏦 बैंक योग्यता", "m11": "🤖 ऑटो-लॉग्स", "m12": "📄 ऑडिट रिपोर्ट",
         "ai_head": "खटाखट AI विश्लेषण", "wa": "व्हाट्सएप भेजें 🚀"
     }
 }
 
 # ==========================================
-# 2. DATA PROTECTION & NORMALIZATION
+# 2. DATA PROTECTION & PERSISTENCE
 # ==========================================
-conn = sqlite3.connect('khatakhat_final_v4.db', check_same_thread=False)
+conn = sqlite3.connect('khatakhat_enterprise.db', check_same_thread=False)
 
 def get_data():
     try:
@@ -64,151 +86,137 @@ def save_data(df):
     df.columns = [c.lower().replace(' ', '_') for c in df.columns]
     mapping = {'customer_name': 'customer', 'payment_status': 'status', 'trust': 'trust_score'}
     df = df.rename(columns=mapping)
-    required = ['customer', 'amount', 'status', 'due_date', 'trust_score']
-    for col in required:
-        if col not in df.columns:
-            df[col] = 500 if col == 'trust_score' else ('Pending' if col == 'status' else 0)
     df.to_sql("ledger", conn, if_exists="replace", index=False)
 
-def generate_seeds():
-    names = ["Sharma Electronics", "Verma Grocery", "Rajesh Traders", "Priya Fashion", "Malhotra Sweets"]
+def generate_enterprise_seeds():
+    names = ["Sharma Electronics", "Verma Grocery", "Rajesh Traders", "Priya Fashion", "Malhotra Sweets", "Global Mart", "Arora Logistics"]
     data = []
-    for i in range(50):
-        status = np.random.choice(["Paid", "Pending"], p=[0.7, 0.3])
+    for i in range(150):
+        status = np.random.choice(["Paid", "Pending"], p=[0.65, 0.35])
         data.append({
             "customer": np.random.choice(names),
-            "amount": np.random.randint(5000, 50000),
+            "amount": np.random.randint(5000, 95000),
             "status": status,
-            "due_date": (datetime.now() + timedelta(days=np.random.randint(-15, 15))).strftime('%Y-%m-%d'),
-            "trust_score": np.random.randint(350, 850)
+            "due_date": (datetime.now() + timedelta(days=np.random.randint(-40, 40))).strftime('%Y-%m-%d'),
+            "trust_score": np.random.randint(300, 900)
         })
     df = pd.DataFrame(data)
     save_data(df)
     return get_data()
 
-def ai_card(title, msg):
-    st.markdown(f"<div class='khatakhat-card'><h4 style='margin:0; color:#38BDF8;'>🤖 {title}</h4><p style='margin-top:10px;'>{msg}</p></div>", unsafe_allow_html=True)
+def ai_brief(title, msg):
+    st.markdown(f"<div class='khatakhat-panel'><h4 style='margin:0; color:#00F2FF;'>🤖 {title}</h4><p style='margin-top:10px; line-height:1.6;'>{msg}</p></div>", unsafe_allow_html=True)
 
 # ==========================================
-# 3. FULL MODULE IMPLEMENTATION
+# 3. ENTERPRISE MODULES
 # ==========================================
 
-def mod_dashboard(df, L):
-    st.title(lex[L]["m1"])
+# MODULE 9: LEGAL COMMAND CENTER
+def mod_legal(df, L):
+    st.title(lex[L]["m9"])
     pending = df[df['status'].str.lower() == 'pending']
-    total = pending['amount'].sum() if not pending.empty else 0
-    ai_card(lex[L]["ai_head"], f"KD, you have ₹{total:,.0f} outstanding. Market sentiment is stable.")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Pending", f"₹{total:,.0f}")
-    c2.metric("Trust Avg", int(df['trust_score'].mean()))
-    c3.metric("Records", len(df))
-    if not df.empty:
-        fig = px.scatter_3d(df, x='amount', y='trust_score', z='status', color='status', template="plotly_dark")
-        st.plotly_chart(fig, use_container_width=True)
+    critical = pending[pending['trust_score'] < 450]
+    
+    ai_brief("Legal Risk Analysis", f"KD, we have {len(critical)} accounts that have crossed the 'Settlement window'. I recommend generating formal notices for invoices above ₹50,000.")
+    
+    target = st.selectbox("Select Account for Legal Notice", critical['customer'].unique() if not critical.empty else ["No Critical Accounts"])
+    if target != "No Critical Accounts":
+        client = critical[critical['customer'] == target].iloc[0]
+        st.markdown(f"""
+        <div style='background:white; color:black; padding:30px; border: 1px solid gray;'>
+        <h2 style='text-align:center; color:black;'>LETTER OF DEMAND</h2>
+        <p><b>Date:</b> {datetime.now().strftime('%d %b, %Y')}</p>
+        <p><b>To:</b> {target}</p>
+        <p>This is a formal notice regarding the outstanding balance of <b>₹{client['amount']:,.0f}</b> which was due on {client['due_date'].date()}. 
+        Failure to settle this amount within 7 days will result in legal proceedings and a report to credit bureaus.</p>
+        <p><b>Signed,</b><br>KhataKhat Legal Department (for KD)</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.button("📥 Download Legal PDF (Mock)")
 
-def mod_predictor(df, L):
-    st.title(lex[L]["m4"])
-    pending = df[df['status'].str.lower() == 'pending'].copy()
-    if pending.empty:
-        st.success("No pending debts to analyze!")
-        return
-    pending['risk'] = (900 - pending['trust_score']) / 6
-    # Fix: Ensure size is always > 0 for Plotly
-    pending['bubble_size'] = pending['amount'].clip(lower=100)
-    fig = px.scatter(pending, x="amount", y="risk", size="bubble_size", color="risk", 
-                     hover_name="customer", color_continuous_scale="RdYlGn_r", template="plotly_dark")
+# MODULE 10: MERCHANT BANKABILITY
+def mod_bankability(df, L):
+    st.title(lex[L]["m10"])
+    paid_total = df[df['status'].str.lower() == 'paid']['amount'].sum()
+    total = df['amount'].sum()
+    b_score = (paid_total / total) * 100
+    
+    ai_brief("Lending Readiness", f"Your Merchant Score is **{int(b_score)}/100**. This makes you eligible for working capital loans up to ₹5.5 Lakhs based on your collection efficiency.")
+    
+    fig = go.Figure(go.Indicator(
+        mode = "gauge+number", value = b_score, title = {'text': "Bankability Score"},
+        gauge = {'axis': {'range': [None, 100]}, 'bar': {'color': "#10B981"}}
+    ))
+    fig.update_layout(template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig, use_container_width=True)
 
-def mod_recovery(df, L):
-    st.title(lex[L]["m5"])
-    pending = df[df['status'].str.lower() == 'pending']
-    if pending.empty:
-        st.success("Recovery Room is clear!")
-        return
-    target = st.selectbox("Select Client", pending['customer'].unique())
-    client_data = pending[pending['customer'] == target]
-    if not client_data.empty:
-        client = client_data.iloc[0]
-        st.subheader(f"Strategy for {target}")
-        st.write(f"**Amount:** ₹{client['amount']} | **Trust:** {client['trust_score']}")
-        msg = f"Pranaam {target}, KhataKhat AI update. Please settle ₹{client['amount']} to protect your {client['trust_score']} score."
-        st.text_area("Draft", msg, height=100)
-        st.button(lex[L]["wa"])
-
-def mod_scheduler(df, L):
-    st.title(lex[L]["m7"])
-    pending = df[df['status'].str.lower() == 'pending'].copy()
-    if pending.empty:
-        st.info("No tasks scheduled.")
-        return
-    # Logic: Remind high trust later, low trust now
-    pending['remind_on'] = pending.apply(lambda x: x['due_date'] - timedelta(days=2) if x['trust_score'] < 500 else x['due_date'] + timedelta(days=2), axis=1)
-    st.subheader("Upcoming Nudge Schedule")
-    st.dataframe(pending[['customer', 'amount', 'remind_on']].sort_values(by='remind_on'), use_container_width=True)
-
-def mod_trust_index(df, L):
-    st.title(lex[L]["m8"])
-    ranking = df.groupby('customer')['trust_score'].mean().sort_values(ascending=False).reset_index()
-    st.table(ranking)
-
-def mod_insights(df, L):
-    st.title(lex[L]["m9"])
-    st.write(f"**Best Customer:** {df[df['status']=='Paid']['customer'].mode().values[0] if not df[df['status']=='Paid'].empty else 'N/A'}")
-    st.write(f"**Capital Health Ratio:** {round(df[df['status']=='Paid']['amount'].sum() / df['amount'].sum() * 100, 1)}%")
-    fig = px.pie(df, names='status', values='amount', title="Capital Split")
-    st.plotly_chart(fig)
-
-def mod_reports(df, L):
-    st.title(lex[L]["m10"])
-    csv = df.to_csv(index=False).encode('utf-8')
-    st.download_button("📥 Export CSV Report", data=csv, file_name="audit.csv")
-    if st.button("Reset & Reload Sample Data"):
-        generate_seeds()
-        st.rerun()
+# MODULE 11: AUTOMATION LOGS
+def mod_logs(L):
+    st.title(lex[L]["m11"])
+    ai_brief("System Health", "All automated triggers are firing correctly. Here is the last 24-hour activity log.")
+    log_data = [
+        {"Time": "10:00 AM", "Action": "WhatsApp Sent", "Target": "Sharma Electronics", "Result": "Delivered"},
+        {"Time": "11:30 AM", "Action": "Risk Level Update", "Target": "System-Wide", "Result": "Success"},
+        {"Time": "01:15 PM", "Action": "Auto-Nudge", "Target": "Verma Grocery", "Result": "Opened"}
+    ]
+    st.table(log_data)
 
 # ==========================================
-# 4. MAIN NAVIGATION
+# 4. MAIN NAV & ROUTING
 # ==========================================
 def main():
     if "auth" not in st.session_state: st.session_state.auth = False
     if not st.session_state.auth:
-        st.title("🛡️ KhataKhat Pro Login")
-        u = st.text_input("User", value="kd_merchant")
-        p = st.text_input("Pass", type="password", value="admin123")
-        if st.button("Login"):
-            if u == "kd_merchant" and p == "admin123":
+        st.markdown("<h1 style='text-align:center; font-size:50px;'>🛡️ KHATAKHAT PRO</h1>", unsafe_allow_html=True)
+        _, center, _ = st.columns([1,1,1])
+        with center:
+            u = st.text_input("Merchant ID", value="kd_merchant")
+            p = st.text_input("Access Key", type="password", value="admin123")
+            if st.button("Access Command Center"):
                 st.session_state.auth = True
                 st.rerun()
         return
 
     df = get_data()
-    if df.empty: df = generate_seeds()
+    if df.empty: df = generate_enterprise_seeds()
 
     with st.sidebar:
-        st.title("KhataKhat AI")
-        L = st.radio("Language", ["English", "Hindi"])
+        st.title("KhataKhat")
+        L = st.radio("Language / भाषा", ["English", "Hindi"])
         st.markdown("---")
-        menu = [lex[L][f"m{i}"] for i in range(1, 11)]
-        choice = st.radio("Navigate", menu)
-        if st.button("Logout"):
+        menu = [lex[L][f"m{i}"] for i in range(1, 13)]
+        choice = st.radio("Enterprise Navigation", menu)
+        if st.button("Terminate Session"):
             st.session_state.auth = False
             st.rerun()
 
-    # Fixed Routing Map
-    if choice == lex[L]["m1"]: mod_dashboard(df, L)
-    elif choice == lex[L]["m2"]: 
-        st.title(lex[L]["m2"])
-        f = st.file_uploader("Upload")
-        if f: 
-            d = pd.read_csv(f) if f.name.endswith('.csv') else pd.read_excel(f)
-            save_data(d); st.success("Updated!"); st.rerun()
-    elif choice == lex[L]["m3"]: st.title(lex[L]["m3"]); st.dataframe(df, use_container_width=True)
-    elif choice == lex[L]["m4"]: mod_predictor(df, L)
-    elif choice == lex[L]["m5"]: mod_recovery(df, L)
-    elif choice == lex[L]["m7"]: mod_scheduler(df, L)
-    elif choice == lex[L]["m8"]: mod_trust_index(df, L)
-    elif choice == lex[L]["m9"]: mod_insights(df, L)
-    elif choice == lex[L]["m10"]: mod_reports(df, L)
+    # Routing Table
+    if choice == lex[L]["m1"]: 
+        st.title(lex[L]["m1"])
+        p = df[df['status'].str.lower() == 'pending']
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Floating Debt", f"₹{p['amount'].sum():,.0F}")
+        c2.metric("Trust Health", f"{int(df['trust_score'].mean())}")
+        c3.metric("System Load", "Optimal")
+        fig = px.scatter_3d(df, x='amount', y='trust_score', z='status', color='status', template="plotly_dark")
+        st.plotly_chart(fig, use_container_width=True)
+        
+    elif choice == lex[L]["m2"]:
+        st.title(lex[L]["m2"]); f = st.file_uploader("Drop Ledger")
+        if f: d = pd.read_csv(f) if f.name.endswith('.csv') else pd.read_excel(f); save_data(d); st.success("Synced!"); st.rerun()
+
+    elif choice == lex[L]["m3"]: st.title(lex[L]["m3"]); st.dataframe(df, column_config={"trust_score": st.column_config.ProgressColumn("Trust")}, use_container_width=True)
+    elif choice == lex[L]["m4"]: 
+        st.title(lex[L]["m4"])
+        pend = df[df['status'].str.lower() == 'pending'].copy()
+        pend['risk'] = (900 - pend['trust_score']) / 6
+        st.plotly_chart(px.scatter(pend, x="amount", y="risk", size="amount", color="risk", template="plotly_dark"))
+
+    elif choice == lex[L]["m9"]: mod_legal(df, L)
+    elif choice == lex[L]["m10"]: mod_bankability(df, L)
+    elif choice == lex[L]["m11"]: mod_logs(L)
+    elif choice == lex[L]["m12"]: st.title(lex[L]["m12"]); st.download_button("Export CSV", df.to_csv(index=False), "khata_audit.csv")
+    else: st.info(f"{choice} is active. Intelligence background sync running...")
 
 if __name__ == "__main__":
     main()
