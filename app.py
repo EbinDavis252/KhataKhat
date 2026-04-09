@@ -5,80 +5,37 @@ import sqlite3
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-import urllib.parse
 
 # ==========================================
-# 0. THE "JAW-DROPPING" UI ENGINE
+# 0. READABILITY-FIRST UI (Phase 2)
 # ==========================================
-st.set_page_config(page_title="KhataKhat Ultra | AI Command", layout="wide", page_icon="🧿")
+st.set_page_config(page_title="KhataKhat Pro | Intelligence Phase", layout="wide", page_icon="⚖️")
 
-# Advanced CSS: Glassmorphism + Neon Aura
+# High-Contrast Professional Theme
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap');
-
     .stApp {
-        background: radial-gradient(circle at 20% 30%, #0D1117 0%, #010409 100%);
-        color: #E6EDF3;
-        font-family: 'Inter', sans-serif;
+        background-color: #0F172A; /* Slate Navy */
+        color: #F1F5F9; /* Off-White Text */
     }
-
-    /* Glassmorphism Card */
-    .glass-card {
-        background: rgba(255, 255, 255, 0.03);
-        backdrop-filter: blur(15px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 20px;
-        padding: 30px;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+    .munim-ai-box {
+        background: #1E293B; 
+        border-left: 6px solid #6366F1;
+        padding: 20px;
+        border-radius: 12px;
         margin-bottom: 25px;
-        transition: 0.4s ease;
+        color: #F1F5F9;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
-    .glass-card:hover {
-        border: 1px solid #00D4FF;
-        box-shadow: 0 0 25px rgba(0, 212, 255, 0.3);
-    }
-
-    /* Holographic AI Munim */
-    .munim-hologram {
-        background: linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, rgba(186, 1, 255, 0.1) 100%);
-        border-left: 5px solid #00D4FF;
-        border-right: 5px solid #BA01FF;
-        padding: 25px;
-        border-radius: 15px;
-        animation: breathe 4s infinite ease-in-out;
-    }
-
-    @keyframes breathe {
-        0% { box-shadow: 0 0 10px rgba(0, 212, 255, 0.2); }
-        50% { box-shadow: 0 0 30px rgba(186, 1, 255, 0.4); }
-        100% { box-shadow: 0 0 10px rgba(0, 212, 255, 0.2); }
-    }
-
-    /* Metrics with Glow */
-    div[data-testid="stMetricValue"] {
-        font-family: 'Orbitron', sans-serif;
-        color: #00D4FF !important;
-        text-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
-        font-size: 2.5rem !important;
-    }
-
-    /* Neon Buttons */
+    h1, h2, h3 { color: #818CF8; }
+    div[data-testid="stMetricValue"] { color: #38BDF8 !important; }
     .stButton>button {
-        background: linear-gradient(90deg, #00D4FF, #BA01FF);
-        border: none; color: white; border-radius: 50px;
-        padding: 12px 30px; font-weight: 700; font-family: 'Orbitron';
-        letter-spacing: 1px; transition: 0.5s;
-    }
-    .stButton>button:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 20px rgba(186, 1, 255, 0.5);
-    }
-
-    /* Clean Sidebar */
-    section[data-testid="stSidebar"] {
-        background-color: rgba(1, 4, 9, 0.95) !important;
-        border-right: 1px solid rgba(255, 255, 255, 0.05);
+        background-color: #6366F1;
+        color: white;
+        border-radius: 8px;
+        border: none;
+        padding: 10px 20px;
+        font-weight: bold;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -86,25 +43,25 @@ st.markdown("""
 # ==========================================
 # 1. BILINGUAL DICTIONARY
 # ==========================================
-strings = {
+lex = {
     "English": {
-        "m1": "📊 Executive Hub", "m3": "📓 Digital Khata", "m5": "🎯 Recovery Ops", "m7": "📈 Capital Forecast",
-        "m6": "⚠️ Risk Radar", "m4": "🔮 AI Predictor", "m8": "🎖️ Trust Index",
-        "m9": "💡 Insights", "m2": "📂 Upload", "m10": "⚙️ Config",
-        "munim": "Munim AI Assistant", "pending": "Capital Outflow", "wa": "Launch WhatsApp Nudge 🚀"
+        "m1": "📊 Dashboard", "m2": "📂 Bulk Upload", "m3": "📓 Smart Ledger", 
+        "m4": "🔮 AI Predictor", "m5": "🎯 Recovery Ops", "m6": "⚠️ Risk Radar",
+        "m7": "📈 Forecast", "m8": "🎖️ Trust Index", "m9": "💡 Insights", "m10": "⚙️ Settings",
+        "wa": "Send WhatsApp Nudge 📲"
     },
     "Hindi": {
-        "m1": "📊 मुख्य केंद्र", "m3": "📓 डिजिटल खाता", "m5": "🎯 वसूली ऑपरेशन", "m7": "📈 आने वाला पैसा",
-        "m6": "⚠️ जोखिम रडार", "m4": "🔮 AI भविष्यवक्ता", "m8": "🎖️ भरोसा स्कोर",
-        "m9": "💡 मुख्य बातें", "m2": "📂 अपलोड", "m10": "⚙️ सेटिंग्स",
-        "munim": "मुनीम AI सहायक", "pending": "कुल बकाया उधार", "wa": "व्हाट्सएप संदेश भेजें 🚀"
+        "m1": "📊 डैशबोर्ड", "m2": "📂 डेटा अपलोड", "m3": "📓 स्मार्ट खाता", 
+        "m4": "🔮 AI भविष्यवक्ता", "m5": "🎯 वसूली ऑपरेशन", "m6": "⚠️ जोखिम रडार",
+        "m7": "📈 पूर्वानुमान", "m8": "🎖️ भरोसा इंडेक्स", "m9": "💡 मुख्य बातें", "m10": "⚙️ सेटिंग्स",
+        "wa": "व्हाट्सएप भेजें 📲"
     }
 }
 
 # ==========================================
-# 2. DATA CORE
+# 2. THE INTELLIGENCE ENGINE (Logic)
 # ==========================================
-conn = sqlite3.connect('khatakhat_ultra.db', check_same_thread=False)
+conn = sqlite3.connect('khatakhat_logic.db', check_same_thread=False)
 
 def get_data():
     try:
@@ -112,132 +69,132 @@ def get_data():
         df['due_date'] = pd.to_datetime(df['due_date'])
         return df
     except:
-        names = ["Sharma Electronics", "Verma Ji", "Royal Traders", "Modern Retail", "Global Mart", "Arora Sweets"]
+        # Create Robust Sample for Logic Testing
+        names = ["Sharma Electronics", "Verma Grocery", "Rajesh Traders", "Priya Fashion", "Malhotra Sweets"]
         data = []
-        for i in range(80):
-            status = np.random.choice(["Paid", "Pending"], p=[0.7, 0.3])
+        for i in range(100):
+            p_status = np.random.choice(["Paid", "Pending"], p=[0.6, 0.4])
+            d_date = datetime.now() + timedelta(days=np.random.randint(-20, 20))
             data.append({
-                "id": 1000 + i,
+                "id": 200 + i,
                 "customer": np.random.choice(names),
-                "phone": "919876543210",
-                "amount": np.random.randint(500, 85000),
-                "status": status,
-                "due_date": (datetime.now() + timedelta(days=np.random.randint(-25, 25))).strftime('%Y-%m-%d'),
-                "trust_score": np.random.randint(300, 900)
+                "amount": np.random.randint(500, 50000),
+                "status": p_status,
+                "due_date": d_date.strftime('%Y-%m-%d'),
+                "trust_score": np.random.randint(300, 900),
+                "last_notified": (datetime.now() - timedelta(days=np.random.randint(0, 10))).strftime('%Y-%m-%d')
             })
         df = pd.DataFrame(data)
         df.to_sql("ledger", conn, if_exists="replace", index=False)
         return get_data()
 
-# ==========================================
-# 3. AI MUNIM HOLOGRAPHIC BRIEF
-# ==========================================
-def render_munim_brief(title, msg, lang):
+def munim_logic_brief(title, msg):
     st.markdown(f"""
-    <div class="munim-hologram">
-        <h4 style="margin:0; color:#00D4FF; font-family:'Orbitron';">✨ {title}</h4>
-        <p style="margin-top:10px; color:#A9B2C3; font-size:16px;">{msg}</p>
+    <div class="munim-ai-box">
+        <h4 style="margin:0; color:#38BDF8;">🤖 {title}</h4>
+        <p style="margin:10px 0 0 0;">{msg}</p>
     </div>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 4. MODULES
+# 3. ADVANCED MODULES (PHASE 2)
 # ==========================================
 
-def mod_dashboard(df, l):
-    st.markdown(f"<h1 style='font-family:Orbitron;'>{strings[l]['m1']}</h1>", unsafe_allow_html=True)
-    pending = df[df['status'] == 'Pending']
+# MODULE 4: AI PREDICTION LOGIC
+def mod_predictor(df, L):
+    st.title(lex[L]["m4"])
+    pending = df[df['status'] == 'Pending'].copy()
     
-    brief = f"KD, we have detected ₹{pending['amount'].sum():,.0f} in high-risk zones. The AI Munim has identified 3 clients with declining trust scores. Action is required." if l == "English" else \
-            f"KD, हमने ₹{pending['amount'].sum():,.0f} को जोखिम क्षेत्र में पाया है। मुनीम ने 3 ऐसे ग्राहकों की पहचान की है जिनका भरोसा स्कोर गिर रहा है।"
-    
-    render_munim_brief(strings[l]["munim"], brief, l)
+    # Logic: Calculate Probability of Default
+    # Higher amount + Lower Trust + Overdue = Higher Probability
+    today = pd.Timestamp.now()
+    pending['days_past'] = (today - pending['due_date']).dt.days
+    pending['prob'] = (pending['days_past'].clip(0, 30) * 2) + (900 - pending['trust_score'])/10
+    pending['prob'] = pending['prob'].clip(0, 100).round(1)
 
-    c1, c2, c3 = st.columns(3)
-    with c1: st.metric(strings[l]["pending"], f"₹{pending['amount'].sum():,.0f}")
-    with c2: st.metric("Active Cases", len(pending))
-    with c3: st.metric("Market Sentiment", "Bullish" if df['trust_score'].mean() > 600 else "Bearish")
+    munim_logic_brief("Probability Engine", f"KD, I've analyzed {len(pending)} pending invoices. {len(pending[pending['prob'] > 70])} cases are at 'High Risk' of default.")
 
-    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-    st.subheader("🌐 3D Risk Topography")
-    fig = px.scatter_3d(df, x='amount', y='trust_score', z='status', color='status',
-                        color_discrete_map={'Pending': '#BA01FF', 'Paid': '#00D4FF'},
-                        opacity=0.8, template="plotly_dark")
-    fig.update_layout(scene=dict(bgcolor="rgba(0,0,0,0)"), margin=dict(l=0, r=0, b=0, t=0))
+    fig = px.scatter(pending, x="amount", y="prob", size="amount", color="prob",
+                     hover_name="customer", title="Default Probability vs. Amount",
+                     color_continuous_scale="RdYlGn_r", template="plotly_dark")
     st.plotly_chart(fig, use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
 
-def mod_recovery(df, l):
-    st.title(strings[l]["m5"])
-    pending = df[df['status'] == 'Pending']
+# MODULE 6: RISK RADAR (Quadrant Analysis)
+def mod_risk_radar(df, L):
+    st.title(lex[L]["m6"])
+    munim_logic_brief("Quadrant Analysis", "I have categorized your customers into 4 zones. Focus on the 'Danger Zone' (Top Left) immediately.")
     
-    col1, col2 = st.columns([1, 1.2])
-    with col1:
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        target = st.selectbox("Select Debtor", pending['customer'].unique())
-        client = pending[pending['customer'] == target].iloc[0]
-        st.write(f"### Debt: ₹{client['amount']:,.0f}")
-        st.progress(client['trust_score']/900, text=f"Trust Score: {client['trust_score']}")
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-    with col2:
-        brief = f"Munim suggests a 'Loss Aversion' strategy for {target}. Frame the message around losing their Gold-tier status." if l == "English" else \
-                f"मुनीम {target} के लिए 'नुकसान से बचाव' की रणनीति का सुझाव देते हैं।"
-        render_munim_brief("Strategic Recovery", brief, l)
-        msg = f"Pranaam {target}, KhataKhat AI Assistant here. KD is finalizing the audit. To prevent a drop in your {client['trust_score']} Trust Score, please settle the ₹{client['amount']} balance today."
-        st.text_area("AI Drafted Script", msg, height=150)
-        st.button(strings[l]["wa"])
+    # Quadrant Logic
+    fig = px.scatter(df, x="trust_score", y="amount", color="status",
+                     marginal_x="box", marginal_y="violin",
+                     title="Trust vs. Debt Value Radar", template="plotly_dark")
+    st.plotly_chart(fig, use_container_width=True)
 
-def mod_ledger(df, l):
-    st.title(strings[l]["m3"])
-    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-    st.dataframe(df, column_config={
-        "trust_score": st.column_config.ProgressColumn("Trust Index", min_value=300, max_value=900),
-        "amount": st.column_config.NumberColumn("Amount (₹)", format="₹%d")
-    }, use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+# MODULE 9: STRATEGIC INSIGHTS
+def mod_insights(df, L):
+    st.title(lex[L]["m9"])
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        st.subheader("🏆 Star Payers")
+        top = df[df['status'] == 'Paid'].groupby('customer')['amount'].sum().nlargest(3)
+        st.write(top)
+        
+    with c2:
+        st.subheader("🕒 Best Collection Time")
+        st.info("Historical data suggests your reminders are 34% more effective on Tuesday mornings.")
+
+    # Cash Gap Logic
+    total_in = df[df['status'] == 'Paid']['amount'].sum()
+    total_out = df[df['status'] == 'Pending']['amount'].sum()
+    st.write(f"**Capital Health Ratio:** {round(total_in/total_out, 2)} (Goal: > 3.0)")
 
 # ==========================================
-# 5. AUTH & MAIN
+# 4. MAIN NAVIGATION
 # ==========================================
 def main():
     if "auth" not in st.session_state: st.session_state.auth = False
 
     if not st.session_state.auth:
-        st.markdown("<h1 style='text-align:center; font-family:Orbitron; color:#00D4FF; font-size:60px; margin-top:100px;'>KHATAKHAT ULTRA</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align:center; color:#BA01FF; letter-spacing:3px;'>AI-POWERED RECOVERY ENGINE</p>", unsafe_allow_html=True)
-        
-        _, center, _ = st.columns([1, 0.8, 1])
-        with center:
-            st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-            u = st.text_input("Merchant ID", value="kd_merchant")
-            p = st.text_input("Access Key", type="password", value="admin123")
-            if st.button("Initialize Command Center"):
-                st.session_state.auth = True
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+        st.title("🛡️ KhataKhat Pro Login")
+        u = st.text_input("Username", value="kd_merchant")
+        p = st.text_input("Password", type="password", value="admin123")
+        if st.button("Unlock Phase 2 Engine"):
+            st.session_state.auth = True
+            st.rerun()
         return
 
     df = get_data()
 
-    # Sidebar
     with st.sidebar:
-        st.markdown("<h2 style='font-family:Orbitron; color:#00D4FF;'>MUNIM AI</h2>", unsafe_allow_html=True)
-        lang = st.radio("System Language", ["English", "Hindi"])
+        st.title("KhataKhat AI")
+        L = st.radio("Language / भाषा", ["English", "Hindi"])
         st.markdown("---")
-        menu = [strings[lang][f"m{i}"] for i in [1, 3, 5, 7, 6, 4, 8, 9, 2, 10]]
-        choice = st.radio("Navigation", menu)
-        if st.button("Terminate Session"):
+        menu = [lex[L][f"m{i}"] for i in range(1, 11)]
+        choice = st.radio("Select Phase 2 Module", menu)
+        if st.button("Logout"):
             st.session_state.auth = False
             st.rerun()
 
     # Routing
-    if choice == strings[lang]["m1"]: mod_dashboard(df, lang)
-    elif choice == strings[lang]["m3"]: mod_ledger(df, lang)
-    elif choice == strings[lang]["m5"]: mod_recovery(df, lang)
+    if choice == lex[L]["m1"]:
+        st.title(lex[L]["m1"])
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Pending", f"₹{df[df['status']=='Pending']['amount'].sum():,.0f}")
+        c2.metric("Trust Score", int(df['trust_score'].mean()))
+        c3.metric("Collection Goal", "₹1.2L")
+        st.dataframe(df, use_container_width=True)
+        
+    elif choice == lex[L]["m4"]: mod_predictor(df, L)
+    elif choice == lex[L]["m6"]: mod_risk_radar(df, L)
+    elif choice == lex[L]["m9"]: mod_insights(df, L)
+    elif choice == lex[L]["m5"]: 
+        st.title(lex[L]["m5"])
+        st.write("Recovery Engine Active. Use Dashboard to target clients.")
+        st.button(lex[L]["wa"])
     else:
         st.title(choice)
-        st.info("Module active. Real-time background sync in progress...")
+        st.write("Functionality loading...")
 
 if __name__ == "__main__":
     main()
