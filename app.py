@@ -2,8 +2,9 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import sqlite3
-from sklearn.ensemble import RandomForestClassifier
 import plotly.express as px
+from sklearn.ensemble import RandomForestClassifier
+from datetime import datetime
 
 st.set_page_config(page_title="Khatakhat AI", layout="wide")
 
@@ -15,7 +16,7 @@ st.markdown("""
 <style>
 
 .stApp{
-background-color:#f6f8fb;
+background-color:#f5f7fb;
 }
 
 .hero-title{
@@ -39,7 +40,7 @@ margin:auto;
 color:#475569;
 }
 
-.card{
+.feature-card{
 background:white;
 padding:25px;
 border-radius:12px;
@@ -66,14 +67,71 @@ trust_score INTEGER
 """)
 
 # -----------------------------
-# FUNCTIONS
+# LANDING PAGE
 # -----------------------------
 
-def insert_record(customer, amount, days_due, status, trust_score):
+def landing():
+
+    st.markdown('<div class="hero-title">Khatakhat AI</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hero-sub">Turn Outstanding Credit Into Predictable Cashflow</div>', unsafe_allow_html=True)
+
+    st.write("")
+
+    st.markdown("""
+    <div class="hero-desc">
+    Khatakhat AI is a receivables intelligence platform designed for small and medium businesses.
+    It analyzes customer payment behavior, predicts default risks, and recommends recovery strategies
+    to improve business cashflow.
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.write("")
+    st.write("")
+
+    if st.button("Enter Platform"):
+        st.session_state.page = "dashboard"
+        st.rerun()
+
+    st.write("")
+    st.write("")
+
+    st.subheader("Platform Capabilities")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown("""
+        <div class="feature-card">
+        <h4>AI Payment Risk Prediction</h4>
+        Identify customers likely to delay payments using predictive analytics.
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("""
+        <div class="feature-card">
+        <h4>Cashflow Forecasting</h4>
+        Estimate expected incoming payments and manage working capital.
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col3:
+        st.markdown("""
+        <div class="feature-card">
+        <h4>Recovery Intelligence</h4>
+        Get smart recommendations for recovering pending payments.
+        </div>
+        """, unsafe_allow_html=True)
+
+# -----------------------------
+# DATA FUNCTIONS
+# -----------------------------
+
+def insert_data(customer, amount, days_due, status, trust):
 
     conn.execute(
         "INSERT INTO ledger VALUES (?,?,?,?,?)",
-        (customer, amount, days_due, status, trust_score)
+        (customer, amount, days_due, status, trust)
     )
 
     conn.commit()
@@ -81,11 +139,9 @@ def insert_record(customer, amount, days_due, status, trust_score):
 
 def load_data():
 
-    try:
-        df = pd.read_sql("SELECT * FROM ledger", conn)
-        return df
-    except:
-        return pd.DataFrame()
+    df = pd.read_sql("SELECT * FROM ledger", conn)
+
+    return df
 
 
 # -----------------------------
@@ -99,7 +155,7 @@ def train_model(df):
     X = df[["amount", "days_due", "trust_score"]]
     y = df["late"]
 
-    model = RandomForestClassifier(n_estimators=100)
+    model = RandomForestClassifier()
 
     model.fit(X, y)
 
@@ -110,73 +166,16 @@ def train_model(df):
 # RECOVERY MESSAGE
 # -----------------------------
 
-def generate_message(risk):
+def recovery_message(row):
 
-    if risk > 0.7:
-        return "High Risk → Send urgent reminder and restrict further credit"
+    if row["risk"] > 0.7:
+        return f"Customer {row['customer']} is high risk. Send urgent payment reminder."
 
-    elif risk > 0.4:
-        return "Medium Risk → Send polite reminder"
+    if row["risk"] > 0.4:
+        return f"Friendly reminder recommended for {row['customer']}."
 
-    else:
-        return "Low Risk → Customer reliable"
+    return f"{row['customer']} is reliable. Standard reminder sufficient."
 
-
-# -----------------------------
-# LANDING PAGE
-# -----------------------------
-
-def landing():
-
-    st.markdown('<div class="hero-title">Khatakhat AI</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="hero-sub">Turn Outstanding Credit Into Predictable Cashflow</div>', unsafe_allow_html=True)
-
-    st.write("")
-
-    st.markdown("""
-    <div class="hero-desc">
-    Khatakhat AI is a receivables intelligence platform for businesses.
-    Instead of simply recording credit transactions, it analyzes customer payment
-    behavior to predict delays, assess credit risk, and improve recovery strategies.
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.write("")
-    st.write("")
-
-    if st.button("Enter Platform"):
-        st.session_state.page = "dashboard"
-        st.rerun()
-
-    st.write("")
-    st.subheader("Why Khatakhat AI")
-
-    col1,col2,col3 = st.columns(3)
-
-    with col1:
-        st.markdown("""
-        <div class="card">
-        <h4>Risk Prediction</h4>
-        AI predicts which customers might delay payments.
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col2:
-        st.markdown("""
-        <div class="card">
-        <h4>Cashflow Visibility</h4>
-        Understand expected incoming payments.
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col3:
-        st.markdown("""
-        <div class="card">
-        <h4>Recovery Intelligence</h4>
-        Get suggestions on how to recover dues.
-        </div>
-        """, unsafe_allow_html=True)
 
 # -----------------------------
 # DASHBOARD
@@ -190,103 +189,93 @@ def dashboard():
 
     if df.empty:
 
-        st.warning("No data available. Upload ledger or add records.")
+        st.info("No ledger data available")
 
-        return
+    else:
 
-    model = train_model(df)
+        model = train_model(df)
 
-    X = df[["amount","days_due","trust_score"]]
+        X = df[["amount", "days_due", "trust_score"]]
 
-    df["risk_probability"] = model.predict_proba(X)[:,1]
+        df["risk"] = model.predict_proba(X)[:,1]
 
-    df["recommendation"] = df["risk_probability"].apply(generate_message)
+        col1, col2, col3 = st.columns(3)
 
-    # METRICS
+        col1.metric("Total Outstanding", f"₹{df[df.status=='Pending']['amount'].sum():,.0f}")
 
-    col1,col2,col3 = st.columns(3)
+        col2.metric("Recovered Payments", f"₹{df[df.status=='Paid']['amount'].sum():,.0f}")
 
-    outstanding = df[df.status=="Pending"]["amount"].sum()
-    recovered = df[df.status=="Paid"]["amount"].sum()
+        col3.metric("Avg Trust Score", int(df.trust_score.mean()))
 
-    col1.metric("Outstanding Credit", f"₹{outstanding:,.0f}")
-    col2.metric("Recovered Payments", f"₹{recovered:,.0f}")
-    col3.metric("Average Trust Score", int(df.trust_score.mean()))
+        st.write("")
 
-    st.write("")
+        st.subheader("Customer Risk Analysis")
 
-    # RISK VISUALIZATION
+        fig = px.scatter(
+            df,
+            x="amount",
+            y="trust_score",
+            color="risk",
+            hover_name="customer"
+        )
 
-    st.subheader("Customer Risk Distribution")
+        st.plotly_chart(fig, use_container_width=True)
 
-    fig = px.scatter(
-        df,
-        x="amount",
-        y="trust_score",
-        color="risk_probability",
-        size="days_due",
-        hover_name="customer"
-    )
+        st.write("")
 
-    st.plotly_chart(fig, use_container_width=True)
+        st.subheader("Recovery Recommendations")
 
-    st.write("")
+        df["recommendation"] = df.apply(recovery_message, axis=1)
 
-    # CASHFLOW FORECAST
+        st.dataframe(df)
 
-    st.subheader("Expected Cashflow")
+        # CASHFLOW FORECAST
 
-    predicted_recovery = outstanding * 0.65
+        st.subheader("Cashflow Forecast")
 
-    st.info(f"Estimated recovery next 30 days: ₹{predicted_recovery:,.0f}")
+        expected = df[df.status=="Pending"]["amount"].sum() * 0.6
 
-    st.write("")
-
-    # TABLE
-
-    st.subheader("Customer Ledger Intelligence")
-
-    st.dataframe(df, use_container_width=True)
+        st.write(f"Expected Recovery Next 30 Days: ₹{expected:,.0f}")
 
 
 # -----------------------------
-# MANUAL ENTRY
+# DATA INPUT
 # -----------------------------
 
-def manual_entry():
+def data_input():
 
-    st.title("Add Ledger Record")
+    st.subheader("Add Ledger Record")
 
     customer = st.text_input("Customer Name")
 
-    amount = st.number_input("Transaction Amount")
+    amount = st.number_input("Amount")
 
-    days_due = st.number_input("Days Payment Delayed")
+    days_due = st.number_input("Days Due")
 
-    trust_score = st.slider("Customer Trust Score",300,900,650)
+    trust = st.slider("Trust Score", 300, 900, 650)
 
-    status = st.selectbox("Payment Status",["Paid","Pending"])
+    status = st.selectbox("Payment Status", ["Paid", "Pending"])
 
-    if st.button("Save Record"):
+    if st.button("Add Record"):
 
-        insert_record(customer, amount, days_due, status, trust_score)
+        insert_data(customer, amount, days_due, status, trust)
 
-        st.success("Record added successfully")
+        st.success("Record Added")
 
 
 # -----------------------------
 # DATA UPLOAD
 # -----------------------------
 
-def upload_data():
+def upload():
 
-    st.title("Upload Ledger Dataset")
+    st.subheader("Upload Ledger Data")
 
     file = st.file_uploader("Upload CSV or Excel")
 
     if file:
 
-        if file.name.endswith(".csv"):
+        if file.name.endswith("csv"):
 
             df = pd.read_csv(file)
 
@@ -296,9 +285,7 @@ def upload_data():
 
         df.to_sql("ledger", conn, if_exists="replace", index=False)
 
-        st.success("Ledger uploaded successfully")
-
-        st.dataframe(df)
+        st.success("Data uploaded successfully")
 
 
 # -----------------------------
@@ -308,7 +295,6 @@ def upload_data():
 def main():
 
     if "page" not in st.session_state:
-
         st.session_state.page = "landing"
 
     if st.session_state.page == "landing":
@@ -319,17 +305,20 @@ def main():
 
         menu = st.sidebar.radio(
             "Navigation",
-            ["Dashboard","Upload Ledger","Manual Entry"]
+            [
+                "Dashboard",
+                "Upload Ledger",
+                "Manual Entry"
+            ]
         )
 
         if menu == "Dashboard":
             dashboard()
 
-        elif menu == "Upload Ledger":
-            upload_data()
+        if menu == "Upload Ledger":
+            upload()
 
-        elif menu == "Manual Entry":
-            manual_entry()
-
+        if menu == "Manual Entry":
+            data_input()
 
 main()
