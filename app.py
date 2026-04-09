@@ -8,6 +8,119 @@ from datetime import datetime, timedelta
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 
+import streamlit as st
+import streamlit_authenticator as stauth
+import yaml
+from yaml.loader import SafeLoader
+import pandas as pd
+import numpy as np
+from streamlit_lottie import st_lottie
+import requests
+
+# --- AUTHENTICATION CONFIG ---
+# In a real app, store this in a 'config.yaml' or environment variables
+credentials = {
+    "usernames": {
+        "kd_merchant": {
+            "name": "KD",
+            "password": "hashed_password", # This is a placeholder
+        }
+    }
+}
+
+# Pre-hashing password for the MVP (Password is 'admin123')
+# In production, use stauth.Hasher.hash('yourpassword')
+credentials['usernames']['kd_merchant']['password'] = '$2b$12$6k/p09/TfOQ.S1FzXhYis.NInXQGf.VdG5mN6f0Fv6P9rK2Jg6vG.'
+
+authenticator = stauth.Authenticate(
+    credentials,
+    "khatakhat_cookie",
+    "signature_key",
+    cookie_expiry_days=30
+)
+
+# --- LANDING PAGE ASSETS ---
+def load_lottieurl(url: str):
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
+
+lottie_finance = load_lottieurl("https://assets5.lottiefiles.com/packages/lf20_y9m8vt78.json")
+
+# --- UI LOGIC ---
+name, authentication_status, username = authenticator.login(location='sidebar')
+
+if authentication_status:
+    # --- LOGGED IN STATE ---
+    authenticator.logout('Logout', 'sidebar')
+    st.sidebar.write(f"Welcome back, **{name}**!")
+    
+    # [PASTE ALL YOUR MODULES AND SIDEBAR NAV HERE FROM THE PREVIOUS RESPONSE]
+    # (Ensure the selection logic is inside this 'if' block)
+    
+elif authentication_status is False:
+    st.error('Username/password is incorrect')
+
+elif authentication_status is None:
+    # --- LANDING PAGE (NOT LOGGED IN) ---
+    st.markdown("""
+        <style>
+        .hero-title {
+            font-size: 60px;
+            font-weight: 800;
+            color: #1E1E1E;
+            line-height: 1.1;
+            margin-bottom: 20px;
+        }
+        .hero-subtitle {
+            font-size: 20px;
+            color: #555;
+            margin-bottom: 40px;
+        }
+        .highlight {
+            color: #FF4B4B;
+        }
+        .card {
+            padding: 20px;
+            border-radius: 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #eee;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    col1, col2 = st.columns([1.5, 1])
+
+    with col1:
+        st.markdown('<h1 class="hero-title">Recover Credit <span class="highlight">3x Faster</span> with AI.</h1>', unsafe_allow_html=True)
+        st.markdown('<p class="hero-subtitle">The first Behavioral Cash-Flow engine built for Indian Micro-merchants. Stop chasing payments. Let AI do the hard work.</p>', unsafe_allow_html=True)
+        
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Recovery Rate", "+85%", "AI Powered")
+        c2.metric("Working Capital", "+40%", "Optimized")
+        c3.metric("Trust Score", "300-900", "Algorithm")
+
+        st.info("💡 **Login on the left sidebar to access your dashboard.**")
+
+    with col2:
+        if lottie_finance:
+            st_lottie(lottie_finance, height=400)
+
+    st.markdown("---")
+    
+    # Value Proposition Section
+    st.subheader("Why Khatakhat beats traditional ledgers?")
+    v1, v2, v3 = st.columns(3)
+    with v1:
+        st.markdown("### 🧠 Behavioral Nudges")
+        st.write("We don't just send reminders. We send psychological triggers based on Social Proof and Reciprocity.")
+    with v2:
+        st.markdown("### 📊 Cash Flow Forecasting")
+        st.write("Predict exactly how much money will enter your shop in the next 7, 15, and 30 days.")
+    with v3:
+        st.markdown("### 🛡️ Risk Detection")
+        st.write("Identify 'Bad Apples' before they default. Protect your business capital with AI.")
 # ==========================================
 # CONFIGURATION & SETUP
 # ==========================================
