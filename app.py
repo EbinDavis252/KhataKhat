@@ -4,26 +4,22 @@ import pandas as pd
 import numpy as np
 import sqlite3
 import plotly.express as px
-import plotly.graph_objects as go
 from datetime import datetime, timedelta
-from sklearn.ensemble import RandomForestClassifier
-from streamlit_lottie import st_lottie
-import requests
+import urllib.parse
 
 # ==========================================
 # 0. UI & BRANDING CONFIG
 # ==========================================
 st.set_page_config(page_title="Khatakhat | AI Recovery", layout="wide", page_icon="💸")
 
-# Hide Streamlit Branding for a Professional Look
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
-    .main-title { font-size: 50px; font-weight: 800; color: #1E1E1E; }
+    .main-title { font-size: 45px; font-weight: 800; color: #1E1E1E; }
     .highlight { color: #FF4B4B; }
-    [data-testid="stMetricValue"] { font-size: 28px; }
+    .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #FF4B4B; color: white; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -35,7 +31,6 @@ conn = sqlite3.connect('khatakhat.db', check_same_thread=False)
 def get_data():
     try:
         df = pd.read_sql("SELECT * FROM ledger", conn)
-        # CRITICAL FIX: Ensure all dates are actual datetime objects
         df['purchase_date'] = pd.to_datetime(df['purchase_date'], errors='coerce')
         df['due_date'] = pd.to_datetime(df['due_date'], errors='coerce')
         df['payment_date'] = pd.to_datetime(df['payment_date'], errors='coerce')
@@ -44,22 +39,20 @@ def get_data():
         return pd.DataFrame()
 
 def generate_sample_data():
-    """Seed data if the database is brand new."""
     np.random.seed(42)
-    customers = [f"Customer {i}" for i in range(1, 21)]
+    customers = ["Ramesh Kumar", "Suresh Store", "Ankit Electronics", "Priya Textiles", "Verma Ji"]
     data = []
-    for i in range(100):
+    for _ in range(50):
         p_date = datetime.now() - timedelta(days=np.random.randint(1, 60))
-        status = np.random.choice(["Paid", "Pending"], p=[0.7, 0.3])
-        pay_date = p_date + timedelta(days=np.random.randint(5, 20)) if status == "Paid" else None
+        status = np.random.choice(["Paid", "Pending"], p=[0.6, 0.4])
         data.append({
             "customer_name": np.random.choice(customers),
             "amount": np.random.randint(500, 5000),
             "payment_status": status,
             "purchase_date": p_date,
             "due_date": p_date + timedelta(days=15),
-            "payment_date": pay_date,
-            "phone_number": "9876543210"
+            "payment_date": p_date + timedelta(days=20) if status == "Paid" else None,
+            "phone_number": "919876543210" # Use international format for WhatsApp
         })
     df = pd.DataFrame(data)
     df.to_sql("ledger", conn, if_exists="replace", index=False)
@@ -86,108 +79,92 @@ authenticator = stauth.Authenticate(
 )
 
 # ==========================================
-# 3. CORE MODULES
+# 3. BEHAVIORAL RECOVERY MODULE (The Core Engine)
 # ==========================================
-
-def module_dashboard(df):
-    st.header("📊 Merchant Dashboard")
+def module_recovery_engine(df):
+    st.header("🧠 Behavioral Recovery Engine")
     
-    # KPIs with Data Fixes
     pending_df = df[df['payment_status'] == 'Pending']
-    total_outstanding = pending_df['amount'].sum()
-    
-    # Fixed Date Comparison
-    last_30_days = pd.Timestamp(datetime.now() - timedelta(days=30))
-    recovered_this_month = df[(df['payment_status'] == 'Paid') & (df['payment_date'] >= last_30_days)]['amount'].sum()
-    
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Outstanding", f"₹{total_outstanding:,.0f}")
-    c2.metric("Monthly Recovery", f"₹{recovered_this_month:,.0f}")
-    c3.metric("Trust Score", "742", "+12")
-    c4.metric("Risk Level", "Medium", "-2%", delta_color="inverse")
-    
-    st.markdown("---")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        fig = px.pie(df, names='payment_status', title="Payment Status Mix", hole=0.4, color_discrete_sequence=['#00CC96', '#EF553B'])
-        st.plotly_chart(fig, use_container_width=True)
-    with col2:
-        trend = df.groupby(df['purchase_date'].dt.date)['amount'].sum().reset_index()
-        fig2 = px.line(trend, x='purchase_date', y='amount', title="Credit Sales Trend")
-        st.plotly_chart(fig2, use_container_width=True)
+    if pending_df.empty:
+        st.success("All caught up! No pending payments.")
+        return
 
-def module_trust_network():
-    st.header("🌐 Global Trust Network")
-    st.info("The first decentralized credit scoring system for Indian MSMEs.")
-    phone = st.text_input("Verify Customer Phone Number", placeholder="Enter 10-digit mobile number")
-    if phone:
-        if phone.endswith(('0', '3', '7')): # Mock logic
-            st.error("⚠️ **Alert:** This customer has defaulted with 3 other merchants in your area.")
-        else:
-            st.success("✅ **Verified:** No payment defaults found on the Khatakhat Network.")
+    st.subheader("Select a customer to nudge")
+    selected_cust = st.selectbox("Customer Name", pending_df['customer_name'].unique())
+    cust_data = pending_df[pending_df['customer_name'] == selected_cust].iloc[0]
+    
+    amount = cust_data['amount']
+    phone = cust_data['phone_number']
 
-def module_ledger(df):
-    st.header("📓 Ledger Records")
-    status = st.selectbox("Filter Status", ["All", "Pending", "Paid"])
-    if status != "All":
-        df = df[df['payment_status'] == status]
-    st.dataframe(df, use_container_width=True)
+    st.markdown(f"### Strategy Selection for {selected_cust}")
+    
+    # AI Message Strategies
+    strategies = {
+        "Social Proof": f"Hi {selected_cust}, you are one of our top-rated customers! Clearing your ₹{amount} helps maintain your status in the merchant trust network.",
+        "Loss Aversion": f"Hi {selected_cust}, to avoid a temporary pause in your credit limit, please settle the outstanding ₹{amount} today.",
+        "Reciprocity": f"Hi {selected_cust}, we've valued our partnership for months. Kindly return the favor by clearing your ₹{amount} ledger today."
+    }
+    
+    choice = st.radio("Choose Nudge Strategy", list(strategies.keys()))
+    message = strategies[choice]
+    
+    st.info(f"**Preview:** {message}")
+    
+    # WhatsApp Deep Linking Logic
+    encoded_msg = urllib.parse.quote(message)
+    # Note: UPI link could be added to message here as well
+    wa_url = f"https://wa.me/{phone}?text={encoded_msg}"
+    
+    st.markdown(f'<a href="{wa_url}" target="_blank"><button style="width:100%; background-color:#25D366; color:white; border:none; padding:10px; border-radius:5px; cursor:pointer;">📲 Send WhatsApp Nudge</button></a>', unsafe_allow_html=True)
 
 # ==========================================
 # 4. MAIN ROUTING
 # ==========================================
 
-# Render Login in Sidebar
-authentication_status = authenticator.login('Login', 'sidebar')
+# FIX: Added keyword arguments for the login method
+# Current streamlit-authenticator syntax: .login(location='main' or 'sidebar')
+try:
+    authenticator.login(location='sidebar')
+except Exception as e:
+    # Fallback for even newer versions where 'location' might be 'main' by default
+    authenticator.login()
 
 if st.session_state["authentication_status"]:
-    # --- AUTHENTICATED ---
     authenticator.logout('Logout', 'sidebar')
     
-    # Load and Sanitize Data
     df = get_data()
     if df.empty:
         df = generate_sample_data()
 
-    st.sidebar.title(f"Khatakhat 🚀")
-    st.sidebar.write(f"Logged in as: **{st.session_state['name']}**")
-    
-    nav = st.sidebar.radio("Go to:", [
-        "Dashboard", 
-        "Global Trust Network", 
-        "Customer Ledger", 
-        "AI Recovery Engine",
-        "Settings"
-    ])
+    st.sidebar.title("Khatakhat 🚀")
+    nav = st.sidebar.radio("Navigation", ["Dashboard", "Recovery Engine", "Ledger", "Trust Network"])
 
     if nav == "Dashboard":
-        module_dashboard(df)
-    elif nav == "Global Trust Network":
-        module_trust_network()
-    elif nav == "Customer Ledger":
-        module_ledger(df)
-    elif nav == "AI Recovery Engine":
-        st.header("🧠 Behavioral Recovery")
-        st.write("Coming Next: WhatsApp Deep-linking and Psychological Nudges.")
+        # Simplified Dashboard Logic
+        st.header("📊 Merchant Dashboard")
+        c1, c2 = st.columns(2)
+        c1.metric("Outstanding", f"₹{df[df['payment_status']=='Pending']['amount'].sum():,.0f}")
+        c2.metric("Recovery Rate", "82%")
+        st.plotly_chart(px.bar(df, x='customer_name', y='amount', color='payment_status'), use_container_width=True)
         
+    elif nav == "Recovery Engine":
+        module_recovery_engine(df)
+        
+    elif nav == "Ledger":
+        st.header("📓 Records")
+        st.dataframe(df, use_container_width=True)
+        
+    elif nav == "Trust Network":
+        st.header("🌐 Global Trust Network")
+        st.text_input("Search Customer Phone Number")
+        st.write("Results will appear here based on cross-merchant data.")
+
 elif st.session_state["authentication_status"] is False:
     st.error('Username/password is incorrect')
 
 elif st.session_state["authentication_status"] is None:
     # --- LANDING PAGE ---
-    col1, col2 = st.columns([1.5, 1])
-    with col1:
-        st.markdown('<h1 class="main-title">Better than <span class="highlight">Khatabook</span>. Faster than <span class="highlight">Zoho</span>.</h1>', unsafe_allow_html=True)
-        st.markdown("### Most merchants lose 20% of their capital to 'forgotten' debts. Khatakhat AI recovers them for you.")
-        
-        st.markdown("---")
-        st.subheader("Why choose Khatakhat?")
-        st.write("✅ **AI Behavioral Reminders:** Not just 'Please pay', but psychological nudges.")
-        st.write("✅ **Global Trust Score:** Check if a customer pays others before giving them credit.")
-        st.write("✅ **Cash Flow Predictor:** Know exactly how much money will hit your bank.")
-        
-        st.info("👈 **Login via the sidebar** to start your recovery engine.")
-    
-    with col2:
-        st.image("https://img.freepik.com/free-vector/financial-analytics-concept-illustration_114360-143.jpg")
+    st.markdown('<h1 class="main-title">Better than <span class="highlight">Ledgers</span>.</h1>', unsafe_allow_html=True)
+    st.write("### AI-powered recovery for small businesses.")
+    st.image("https://img.freepik.com/free-vector/financial-analytics-concept-illustration_114360-143.jpg", width=600)
+    st.info("👈 Please login via the sidebar to access your shop's engine.")
