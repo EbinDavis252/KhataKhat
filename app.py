@@ -8,14 +8,14 @@ import plotly.express as px
 st.set_page_config(page_title="Khatakhat AI", layout="wide")
 
 # -----------------------------
-# CLEAN FINTECH UI
+# STYLE
 # -----------------------------
 
 st.markdown("""
 <style>
 
 .stApp{
-background-color:#f5f7fb;
+background-color:#f6f8fb;
 }
 
 .hero-title{
@@ -66,7 +66,7 @@ trust_score INTEGER
 """)
 
 # -----------------------------
-# DATABASE FUNCTIONS
+# FUNCTIONS
 # -----------------------------
 
 def insert_record(customer, amount, days_due, status, trust_score):
@@ -87,6 +87,7 @@ def load_data():
     except:
         return pd.DataFrame()
 
+
 # -----------------------------
 # AI MODEL
 # -----------------------------
@@ -95,7 +96,7 @@ def train_model(df):
 
     df["late"] = df["status"].apply(lambda x: 1 if x == "Pending" else 0)
 
-    X = df[["amount","days_due","trust_score"]]
+    X = df[["amount", "days_due", "trust_score"]]
     y = df["late"]
 
     model = RandomForestClassifier(n_estimators=100)
@@ -104,57 +105,21 @@ def train_model(df):
 
     return model
 
+
 # -----------------------------
-# RECOVERY RECOMMENDATION
+# RECOVERY MESSAGE
 # -----------------------------
 
-def generate_recovery_strategy(risk):
+def generate_message(risk):
 
     if risk > 0.7:
-        return "High Risk → Send urgent reminder and restrict credit"
+        return "High Risk → Send urgent reminder and restrict further credit"
 
     elif risk > 0.4:
-        return "Medium Risk → Send friendly reminder"
+        return "Medium Risk → Send polite reminder"
 
     else:
         return "Low Risk → Customer reliable"
-
-
-# -----------------------------
-# WHATSAPP MESSAGE GENERATOR
-# -----------------------------
-
-def generate_whatsapp_message(customer, amount):
-
-    message = f"""
-Hello {customer},
-
-This is a friendly reminder from Khatakhat AI.
-
-Our records show an outstanding balance of ₹{amount}.
-
-Kindly clear the dues at your earliest convenience to maintain smooth business relations.
-
-You can pay instantly using the UPI link provided.
-
-Thank you for your continued support.
-
-Regards
-Khatakhat AI Collections
-"""
-
-    return message
-
-
-# -----------------------------
-# UPI PAYMENT LINK
-# -----------------------------
-
-def generate_upi_link(amount):
-
-    upi_link = f"upi://pay?pa=khatakhat@upi&pn=KhatakhatAI&am={amount}"
-
-    return upi_link
 
 
 # -----------------------------
@@ -171,10 +136,9 @@ def landing():
 
     st.markdown("""
     <div class="hero-desc">
-    Khatakhat AI is an intelligent receivables analytics platform designed for small
-    and medium businesses. Instead of simply recording transactions, it analyzes
-    customer payment behavior to predict delays, assess credit risk, and improve
-    recovery strategies.
+    Khatakhat AI is a receivables intelligence platform for businesses.
+    Instead of simply recording credit transactions, it analyzes customer payment
+    behavior to predict delays, assess credit risk, and improve recovery strategies.
     </div>
     """, unsafe_allow_html=True)
 
@@ -182,28 +146,27 @@ def landing():
     st.write("")
 
     if st.button("Enter Platform"):
-
         st.session_state.page = "dashboard"
         st.rerun()
 
     st.write("")
-    st.subheader("Platform Capabilities")
+    st.subheader("Why Khatakhat AI")
 
     col1,col2,col3 = st.columns(3)
 
     with col1:
         st.markdown("""
         <div class="card">
-        <h4>AI Payment Risk Prediction</h4>
-        Identify customers likely to delay payments using predictive analytics.
+        <h4>Risk Prediction</h4>
+        AI predicts which customers might delay payments.
         </div>
         """, unsafe_allow_html=True)
 
     with col2:
         st.markdown("""
         <div class="card">
-        <h4>Cashflow Forecasting</h4>
-        Estimate expected incoming payments and manage working capital.
+        <h4>Cashflow Visibility</h4>
+        Understand expected incoming payments.
         </div>
         """, unsafe_allow_html=True)
 
@@ -211,10 +174,9 @@ def landing():
         st.markdown("""
         <div class="card">
         <h4>Recovery Intelligence</h4>
-        Generate recovery strategies and automated reminders.
+        Get suggestions on how to recover dues.
         </div>
         """, unsafe_allow_html=True)
-
 
 # -----------------------------
 # DASHBOARD
@@ -228,7 +190,7 @@ def dashboard():
 
     if df.empty:
 
-        st.warning("No data available. Upload ledger dataset or add manual records.")
+        st.warning("No data available. Upload ledger or add records.")
 
         return
 
@@ -238,11 +200,9 @@ def dashboard():
 
     df["risk_probability"] = model.predict_proba(X)[:,1]
 
-    df["recovery_strategy"] = df["risk_probability"].apply(generate_recovery_strategy)
+    df["recommendation"] = df["risk_probability"].apply(generate_message)
 
-    # -----------------------------
     # METRICS
-    # -----------------------------
 
     col1,col2,col3 = st.columns(3)
 
@@ -255,9 +215,7 @@ def dashboard():
 
     st.write("")
 
-    # -----------------------------
     # RISK VISUALIZATION
-    # -----------------------------
 
     st.subheader("Customer Risk Distribution")
 
@@ -267,53 +225,28 @@ def dashboard():
         y="trust_score",
         color="risk_probability",
         size="days_due",
-        hover_name="customer",
-        title="Customer Payment Risk Analysis"
+        hover_name="customer"
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # -----------------------------
-    # CASHFLOW FORECAST
-    # -----------------------------
+    st.write("")
 
-    st.subheader("Cashflow Forecast")
+    # CASHFLOW FORECAST
+
+    st.subheader("Expected Cashflow")
 
     predicted_recovery = outstanding * 0.65
 
-    st.info(f"Estimated recovery in next 30 days: ₹{predicted_recovery:,.0f}")
+    st.info(f"Estimated recovery next 30 days: ₹{predicted_recovery:,.0f}")
 
-    # -----------------------------
-    # LEDGER INTELLIGENCE TABLE
-    # -----------------------------
+    st.write("")
+
+    # TABLE
 
     st.subheader("Customer Ledger Intelligence")
 
     st.dataframe(df, use_container_width=True)
-
-    # -----------------------------
-    # RECOVERY ENGINE
-    # -----------------------------
-
-    st.subheader("Recovery Communication Engine")
-
-    pending_df = df[df.status=="Pending"]
-
-    for index,row in pending_df.iterrows():
-
-        st.markdown(f"### {row['customer']}")
-
-        message = generate_whatsapp_message(row["customer"], row["amount"])
-
-        upi_link = generate_upi_link(row["amount"])
-
-        st.text_area("WhatsApp Recovery Message", message, height=150)
-
-        st.write("UPI Payment Link")
-
-        st.code(upi_link)
-
-        st.divider()
 
 
 # -----------------------------
@@ -386,11 +319,7 @@ def main():
 
         menu = st.sidebar.radio(
             "Navigation",
-            [
-                "Dashboard",
-                "Upload Ledger",
-                "Manual Entry"
-            ]
+            ["Dashboard","Upload Ledger","Manual Entry"]
         )
 
         if menu == "Dashboard":
