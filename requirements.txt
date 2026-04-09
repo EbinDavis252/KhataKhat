@@ -1,8 +1,6 @@
 streamlit
 pandas
 numpy
-scikit-learn
 plotly
-altair
-streamlit-authenticator
-streamlit-lottie
+scikit-learn
+openpyxl
